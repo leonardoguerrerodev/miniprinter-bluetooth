@@ -63,7 +63,13 @@ def a_escpos(im):
     # Rareza real de esta unidad: sin rotar sale de cabeza (verificado en papel)
     im = im.rotate(180)
     # ESC/POS quiere 1 = punto negro; en PIL modo '1' el 1 es blanco
-    im = ImageOps.invert(im.convert("L")).convert("1")
+    im = ImageOps.invert(im.convert("L"))
+    # ponytail: umbral duro sin dithering en vez del convert("1") default de
+    # PIL (Floyd-Steinberg). El dithering reparte el gris del antialiasing de
+    # pdftoppm en un punteado, lo que deja los trazos finos del texto grises
+    # en vez de negro solido. Bajar el umbral (no 128) mete tambien los bordes
+    # antialiaseados como negro pleno -> texto mas grueso y mas oscuro.
+    im = im.point(lambda p: 255 if p > 60 else 0).convert("1")
 
     datos = im.tobytes()
     bytes_por_fila = ANCHO // 8
