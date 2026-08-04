@@ -31,6 +31,21 @@ lpadmin -p "$COLA" -v "$URI" -P /usr/share/cups/model/obsedium-yhk.ppd -E \
 cupsenable "$COLA"
 cupsaccept "$COLA"
 
+# La plantilla de Writer vive en el perfil del usuario, no en /usr, asi que se
+# instala como quien invoco sudo. No es critica: si LibreOffice esta abierto la
+# conversion puede fallar, y en ese caso solo se avisa.
+if [[ -n "${SUDO_USER:-}" ]] && command -v soffice >/dev/null 2>&1; then
+  echo ">> Plantilla de Writer (hoja de 56 mm, area util de 48 mm)..."
+  DEST="$(getent passwd "$SUDO_USER" | cut -d: -f6)/.config/libreoffice/4/user/template"
+  if sudo -u "$SUDO_USER" mkdir -p "$DEST" &&
+     sudo -u "$SUDO_USER" soffice --headless --convert-to ott --outdir "$DEST" \
+          "$AQUI/obsedium-termica.fodt" >/dev/null 2>&1; then
+    echo "   instalada en $DEST"
+  else
+    echo "   OMITIDA (cerra LibreOffice y volve a correr, o convertila a mano)"
+  fi
+fi
+
 echo
 echo "Listo. Probala con:"
 echo "  lp -d $COLA archivo.pdf"

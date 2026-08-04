@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Plantilla de Writer para la mini termica YHK.
+
+     El rollo mide 56 mm de ancho pero el cabezal solo imprime 48 mm, asi que
+     la hoja se declara de 56 mm y los margenes laterales se fijan en 4 mm:
+     56 - 4 - 4 = 48 mm de area de texto, que es exactamente lo que el cabezal
+     puede marcar. Todo lo que quede fuera de esos 48 mm no se imprime.
+
+     Se guarda como ODF plano (.fodt) en vez de .ott para que sea texto y se
+     pueda diffear; el instalador lo convierte a plantilla. -->
+<office:document
+    xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+    xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"
+    xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"
+    xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"
+    office:version="1.3"
+    office:mimetype="application/vnd.oasis.opendocument.text">
+  <office:font-face-decls>
+    <style:font-face style:name="Liberation Mono" style:font-pitch="fixed"/>
+  </office:font-face-decls>
+  <office:styles>
+    <style:default-style style:family="paragraph">
+      <style:text-properties style:font-name="Liberation Mono" fo:font-size="9pt"/>
+    </style:default-style>
+    <style:style style:name="Standard" style:family="paragraph">
+      <style:text-properties style:font-name="Liberation Mono" fo:font-size="9pt"/>
+    </style:style>
+  </office:styles>
+  <office:automatic-styles>
+    <style:page-layout style:name="pm-termica">
+      <!-- 56 mm de papel; 4 mm por lado = 48 mm imprimibles -->
+      <style:page-layout-properties
+          fo:page-width="56mm" fo:page-height="100mm"
+          style:print-orientation="portrait"
+          fo:margin-top="2mm" fo:margin-bottom="2mm"
+          fo:margin-left="4mm" fo:margin-right="4mm"
+          style:writing-mode="lr-tb"/>
+    </style:page-layout>
+  </office:automatic-styles>
+  <office:master-styles>
+    <style:master-page style:name="Standard" style:page-layout-name="pm-termica"/>
+  </office:master-styles>
+  <office:body>
+    <office:text>
+      <text:p text:style-name="Standard">Etiqueta termica 56 mm</text:p>
+      <text:p text:style-name="Standard">Area util: 48 mm</text:p>
+    </office:text>
+  </office:body>
+</office:document>

@@ -42,7 +42,19 @@ Después aparece en el diálogo de impresión de Chrome y de cualquier app.
 | `cups/yhk` | Backend CUPS: abre el socket RFCOMM y copia el trabajo |
 | `cups/rastertoyhk` | Filtro CUPS: PDF → ESC/POS (rasteriza con `pdftoppm` a 203 dpi) |
 | `cups/obsedium-yhk.ppd` | Rollo de 48 mm, 203 dpi, monocromo |
+| `cups/obsedium-termica.fodt` | Plantilla de Writer: hoja de 56 mm, área útil de 48 mm |
+| `cups/test_rastertoyhk.py` | Check del filtro: la etiqueta sale siempre al mismo ancho |
 | `cups/instalar.sh` | Copia todo a su lugar y crea la cola `Obsedium_Termica` |
+
+### Escribir etiquetas en LibreOffice Writer
+
+El instalador deja la plantilla en `~/.config/libreoffice/4/user/template/`; se abre desde
+**Archivo → Nuevo → Plantillas** (`Ctrl+Shift+N`). El rollo mide 56 mm pero el cabezal solo
+marca 48, así que la hoja se declara de 56 mm con 4 mm de margen a cada lado: lo que se
+escriba dentro de esos 48 mm es exactamente lo que se imprime.
+
+Para cambiar el tamaño de hoja de un documento cualquiera: **Formato → Estilo de página… →
+pestaña Página**, ahí están el desplegable *Formato*, *Anchura*/*Altura* y los márgenes.
 
 Detalles que cuestan de descubrir:
 
