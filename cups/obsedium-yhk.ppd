@@ -1,0 +1,80 @@
+*PPD-Adobe: "4.3"
+*% PPD de la mini termica bluetooth YHK-59A8 para Obsedium.
+*% El trabajo llega como PDF y lo convierte a ESC/POS el filtro rastertoyhk.
+*% 384 puntos de cabezal / 203 dpi = 48 mm de ancho imprimible.
+*FormatVersion: "4.3"
+*FileVersion: "1.0"
+*LanguageEncoding: ISOLatin1
+*LanguageVersion: Spanish
+*PCFileName: "OBSYHK.PPD"
+*Manufacturer: "YHK"
+*Product: "(YHK-59A8)"
+*ModelName: "Obsedium YHK termica"
+*ShortNickName: "Obsedium YHK termica"
+*NickName: "Obsedium YHK termica 48mm"
+*PSVersion: "(3010.000) 0"
+*LanguageLevel: "3"
+*ColorDevice: False
+*DefaultColorSpace: Gray
+*FileSystem: False
+*Throughput: "1"
+*TTRasterizer: Type42
+
+*% OJO: tiene que ser `application/vnd.cups-pdf`, no `application/pdf`.
+*% CUPS normaliza todo PDF a vnd.cups-pdf con pdftopdf antes de llegar al
+*% filtro; declarando application/pdf no queda ruta hasta acá, CUPS cae a
+*% pdftops y le manda PostScript crudo a la impresora, que lo ignora en
+*% silencio (el trabajo figura completado, con 0 paginas).
+*cupsFilter: "application/vnd.cups-pdf 0 rastertoyhk"
+*cupsVersion: 2.4
+*cupsManualCopies: True
+
+*OpenGroup: General/General
+
+*OpenUI *PageSize/Tamano de papel: PickOne
+*OrderDependency: 10 AnySetup *PageSize
+*DefaultPageSize: Rollo48x100
+*PageSize Rollo48x100/48 x 100 mm (etiqueta): "<</PageSize[136 283]/ImagingBBox null>>setpagedevice"
+*PageSize Rollo48x150/48 x 150 mm (etiqueta larga): "<</PageSize[136 425]/ImagingBBox null>>setpagedevice"
+*PageSize Rollo48x297/48 x 297 mm (tira larga): "<</PageSize[136 842]/ImagingBBox null>>setpagedevice"
+*CloseUI: *PageSize
+
+*OpenUI *PageRegion/Area de pagina: PickOne
+*OrderDependency: 10 AnySetup *PageRegion
+*DefaultPageRegion: Rollo48x100
+*PageRegion Rollo48x100/48 x 100 mm (etiqueta): "<</PageSize[136 283]/ImagingBBox null>>setpagedevice"
+*PageRegion Rollo48x150/48 x 150 mm (etiqueta larga): "<</PageSize[136 425]/ImagingBBox null>>setpagedevice"
+*PageRegion Rollo48x297/48 x 297 mm (tira larga): "<</PageSize[136 842]/ImagingBBox null>>setpagedevice"
+*CloseUI: *PageRegion
+
+*% Sin margenes: el cabezal cubre los 48 mm completos y el filtro recorta el
+*% blanco sobrante, asi que no hay que reservar borde.
+*DefaultImageableArea: Rollo48x100
+*ImageableArea Rollo48x100/48 x 100 mm (etiqueta): "0 0 136 283"
+*ImageableArea Rollo48x150/48 x 150 mm (etiqueta larga): "0 0 136 425"
+*ImageableArea Rollo48x297/48 x 297 mm (tira larga): "0 0 136 842"
+
+*DefaultPaperDimension: Rollo48x100
+*PaperDimension Rollo48x100/48 x 100 mm (etiqueta): "136 283"
+*PaperDimension Rollo48x150/48 x 150 mm (etiqueta larga): "136 425"
+*PaperDimension Rollo48x297/48 x 297 mm (tira larga): "136 842"
+
+*% Rollo continuo: se permite cualquier alto para que Chrome pueda pedir
+*% `@page { size: 48mm auto }` sin que CUPS lo rechace.
+*HWMargins: 0 0 0 0
+*MaxMediaWidth: "136"
+*MaxMediaHeight: "3276"
+*CustomPageSize True: "pop pop pop <</PageSize[5 -2 roll]/ImagingBBox null>>setpagedevice"
+*ParamCustomPageSize Width: 1 points 72 136
+*ParamCustomPageSize Height: 2 points 72 3276
+*ParamCustomPageSize WidthOffset: 3 points 0 0
+*ParamCustomPageSize HeightOffset: 4 points 0 0
+*ParamCustomPageSize Orientation: 5 int 0 0
+
+*OpenUI *Resolution/Resolucion: PickOne
+*OrderDependency: 20 AnySetup *Resolution
+*DefaultResolution: 203dpi
+*Resolution 203dpi/203 dpi (nativa): "<</HWResolution[203 203]>>setpagedevice"
+*CloseUI: *Resolution
+
+*CloseGroup: General

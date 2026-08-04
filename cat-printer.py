@@ -8,7 +8,7 @@ from time import sleep
 import struct
 
 
-printerMACAddress = 'XX:XX:XX:XX:XX:XX'
+printerMACAddress = 'F6:2E:54:27:59:A8'
 printerWidth = 384
 port = 2
 
@@ -118,6 +118,20 @@ def printImage(soc, im):
     sleep(.5)
 
 
+import os, sys
+
+# ponytail: argv en vez de argparse; si algun dia hace falta densidad/rotacion, ahi si
+arg = sys.argv[1] if len(sys.argv) > 1 else ""
+if not arg:
+    sys.exit("uso: cat-printer.py ARCHIVO.png|.jpg   |   cat-printer.py -t \"texto\"")
+
+if arg == "-t":
+    texto = " ".join(sys.argv[2:])
+    font = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Lucon.ttf")
+    img = create_text(texto, font_name=font, font_size=48)
+else:
+    img = PIL.Image.open(arg)
+
 s = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
 s.connect((printerMACAddress,port))
 
@@ -128,13 +142,6 @@ getPrinterSerialNumber(s)
 sleep(0.5)
 getPrinterProductInfo(s)
 sleep(0.5)
-
-#Read Image File
-img = PIL.Image.open("Turtle.jpg")
-
-#Create image from text
-#text = "Line 1\nLine 2\nLine 3"
-#img = create_text(text,font_size=65)
 
 
 printImage(s,img)

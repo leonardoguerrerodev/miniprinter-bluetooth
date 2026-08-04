@@ -1,0 +1,130 @@
+#!/usr/bin/python3
+"""Backend CUPS: manda el trabajo a la mini termica YHK por RFCOMM.
+
+URI:  yhk://F6-2E-54-27-59-A8/2      (MAC con guiones, canal RFCOMM al final)
+
+El backend de bluez-cups no sirve acá por dos motivos: ignora la DEVICE_URI que
+se le pasa, y su descubrimiento filtra por clase de dispositivo Imaging (6)
+mientras esta impresora se declara clase 9. Abrir el socket a mano es mas corto
+que pelear con eso.
+
+No hace falta `rfcomm bind` ni /dev/rfcomm0: el socket RFCOMM se abre directo.
+"""
+import os
+import socket
+import sys
+import time
+
+CANAL_POR_DEFECTO = 2  # el canal 1 devuelve ECONNREFUSED en esta impresora
+INTENTOS = 3
+
+
+def aviso(msg):
+    sys.stderr.write(msg + "\n")
+    sys.stderr.flush()
+
+
+def descubrir():
+    # CUPS lee esto al listar dispositivos (lpinfo -v)
+    print('direct yhk://F6-2E-54-27-59-A8/2 "YHK-59A8" '
+          '"Obsedium mini termica YHK" ""')
+    return 0
+
+
+def parsear_uri(uri):
+    resto = uri.split("://", 1)[1]
+    host, _, canal = resto.partition("/")
+    return host.replace("-", ":").upper(), int(canal) if canal else CANAL_POR_DEFECTO
+
+
+def conectar(mac, canal):
+    """Abre el socket con reintento.
+
+    Al reconectar apenas termina un trabajo la impresora contesta
+    ECONNREFUSED por unos segundos; sin reintento, dos etiquetas seguidas
+    fallan. La espera crece porque a veces el primer reintento es muy pronto.
+    """
+    ultimo = None
+    for intento in range(1, INTENTOS + 1):
+        s = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM,
+                          socket.BTPROTO_RFCOMM)
+        s.settimeout(20)
+        try:
+            s.connect((mac, canal))
+            return s
+        except OSError as e:
+            ultimo = e
+            s.close()
+            aviso("DEBUG: intento %d/%d fallo: %s" % (intento, INTENTOS, e))
+            if intento < INTENTOS:
+                time.sleep(intento * 2)
+    raise ultimo
+
+
+def saludo(s):
+    """Consultas de estado previas, igual que hace la app original.
+
+    No se sabe si son imprescindibles; van porque es lo que se probo que
+    funciona. Las respuestas se descartan.
+    """
+    for consulta in (b"\x1e\x47\x03", b"\x1d\x67\x39", b"\x1d\x67\x69"):
+        try:
+            s.send(consulta)
+            time.sleep(0.3)
+            s.recv(64)
+        except OSError:
+            pass  # la impresora no siempre contesta; no es motivo para abortar
+
+
+def main(argv):
+    if len(argv) == 1:
+        return descubrir()
+    if len(argv) not in (6, 7):
+        aviso("Uso: yhk job-id usuario titulo copias opciones [archivo]")
+        return 1
+
+    uri = os.environ.get("DEVICE_URI") or argv[0]
+    try:
+        mac, canal = parsear_uri(uri)
+    except (IndexError, ValueError):
+        aviso("ERROR: DEVICE_URI invalida: %s" % uri)
+        return 1
+
+    if len(argv) == 7:
+        with open(argv[6], "rb") as f:
+            datos = f.read()
+    else:
+        datos = sys.stdin.buffer.read()
+
+    if not datos:
+        aviso("ERROR: trabajo vacio, no se manda nada")
+        return 1
+
+    aviso("STATE: +connecting-to-device")
+    try:
+        s = conectar(mac, canal)
+    except OSError as e:
+        aviso("ERROR: no se pudo conectar a %s canal %d: %s" % (mac, canal, e))
+        return 1
+    aviso("STATE: -connecting-to-device")
+
+    try:
+        saludo(s)
+        time.sleep(0.5)
+        # En trozos con pausa: el firmware pierde bytes si se le vacia todo de
+        # golpe (la app original tambien trocea).
+        for i in range(0, len(datos), 1024):
+            s.sendall(datos[i:i + 1024])
+            time.sleep(0.02)
+        time.sleep(1.0)  # deja terminar de imprimir antes de cortar el enlace
+    except OSError as e:
+        aviso("ERROR: fallo al enviar: %s" % e)
+        return 1
+    finally:
+        s.close()
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

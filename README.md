@@ -1,53 +1,67 @@
-# YHK-Cat-Thermal-Printer
+# Mini térmica bluetooth YHK-59A8
 
-Mini **cat/rabbit** **thermal** printer of the **YHK** type
+Impresora térmica de 58 mm (384 px de cabezal), MAC `F6:2E:54:27:59:A8`.
 
-<img src="https://raw.githubusercontent.com/abhigkar/YHK-Cat-Thermal-Printer/main/images/Cat-printer.jpeg"  width="300">
-<img src="https://raw.githubusercontent.com/abhigkar/YHK-Cat-Thermal-Printer/main/images/default-test-print.png"  width="300">
+Base: [abhigkar/YHK-Cat-Thermal-Printer](https://github.com/abhigkar/YHK-Cat-Thermal-Printer),
+con la MAC ya puesta y el bloque final de `cat-printer.py` cambiado para tomar argumentos.
 
-This is yet another project with a **Cat/Rabbit thermal printer**. Other GitHub sources are also accessible, however none of them were successful for me because they all used the Cat-Printer with BLE protocol.
+## Lo importante
 
-Unfortunately, my cat-printer uses a different firmware version that is based on the Classic bluetooth protocol rather than the GATT based protocol. **YHK-XXXX** was broadcast by my printer. The last four characters of the printer's **MAC address** are XXXX.
+**Habla por Bluetooth Classic, RFCOMM canal 2.** El canal 1 devuelve
+`[Errno 111] Connection refused`.
 
-The Android and iOS app named **WalkPrint** is compatible with my cat printer. Although the app is worthless, some features need logging in.
+Por BLE la impresora **acepta los bytes y los ignora en silencio**: alimenta papel y sale en
+blanco. Por eso no sirven ni Web Bluetooth ni proyectos como `TiMini-Print`, que solo intenta el
+canal 1 y después cae a BLE.
 
-My starting point: I was motivated from [This blogpost](https://werwolv.net/blog/cat_printerhttps:/) and planned to have my own printer. I did spent some time working on the [bitbank2/Thermal_Printer](https://github.com/bitbank2/Thermal_Printer) project, but I soon found that since my printer is different so no other code will run on it.
+Dos rarezas del firmware que ningún filtro ESC/POS genérico manda:
 
-You can also read the full product review [here](https://hackspace.raspberrypi.com/articles/bluetooth-cat-thermal-printer-review)
+- `1D 49 F0 19` antes del raster (inicio de impresión propio de este firmware)
+- la imagen va **rotada 180°**, si no sale de cabeza
 
-Other reference projects [repositories](https://github.com/JJJollyjim/catprinter)
+## Uso directo (sin CUPS)
 
-* [bitbank2/Thermal_Printer](https://github.com/bitbank2/Thermal_Printer)
-* [WerWolv/PythonCatPrinter](https://github.com/WerWolv/PythonCatPrinter)
-* [amber-sixel/PythonCatPrinter](https://github.com/amber-sixel/PythonCatPrinter)
-* [the6p4c/catteprinter](https://github.com/the6p4c/catteprinter)
-* [JJJollyjim/PyCatte](https://github.com/JJJollyjim/PyCatte)
-* [xssfox](https://gist.github.com/xssfox/b911e0781a763d258d21262c5fdd2dec)
+```bash
+.venv/bin/python cat-printer.py imagen.png
+.venv/bin/python cat-printer.py -t "texto"
+```
 
-### Some real work of RE 🚀️
+Sirve para probar el hardware sin CUPS de por medio cuando algo falla.
 
-In order to obtain certain internals, I have started my own reverse engineering.
+## Como impresora del sistema
 
-To examine the packet exchange between the phone and the printer, I decompiled the Android app, grabbed the BT snoop log from my phone, and then opened the log file in WireShark. And indeed, the BLE/GATT-based system was not the cause. Decompiled code for Android supports that.
+```bash
+sudo cups/instalar.sh
+lp -d Obsedium_Termica archivo.pdf
+```
 
-### Action Replay 😄
+Después aparece en el diálogo de impresión de Chrome y de cualquier app.
 
-Therefore, everything is straightforward. I attempted to send the same commands and data packets from my dependable Raspberry Pi Zero W through RFCOMM on the terminal based on the WirteShark logs. I finally succeeded in printing the identical image that was on my phone after a few failed attempts. In action replaySo things are simple. Based on the WirteShark logs, I tried to send the same commands/data paylods from my trusty **Raspberry pi Zero W** via **RFCOMM** on terminal. After few trial, I was able to print the same image as it was from my phone.
+| Archivo | Qué es |
+|---|---|
+| `cups/yhk` | Backend CUPS: abre el socket RFCOMM y copia el trabajo |
+| `cups/rastertoyhk` | Filtro CUPS: PDF → ESC/POS (rasteriza con `pdftoppm` a 203 dpi) |
+| `cups/obsedium-yhk.ppd` | Rollo de 48 mm, 203 dpi, monocromo |
+| `cups/instalar.sh` | Copia todo a su lugar y crea la cola `Obsedium_Termica` |
 
-### The Final Result 👀️
+Detalles que cuestan de descubrir:
 
-To make this functional, the next task was to produce the data payload from my script. I went back and pulled three routines from the decompiled code to capture the BITMAP, transform it to 1 Bit pictures, and append some bytes as file headers. This step was more difficult because I was only able to obtain the function name. I then tried writing the similler routines in some other Python code, and it succeeded.
+- El backend de **bluez-cups no sirve**: ignora la `DEVICE_URI` que se le pasa, y su
+  descubrimiento filtra por clase de dispositivo Imaging (6) mientras esta impresora se declara
+  **clase 9 (Health)**.
+- El filtro corre como usuario `lp`, que **no ve los paquetes de `~/.local`**. De ahí el
+  `python3-pillow` del sistema en el instalador.
+- 203 dpi no es arbitrario: a esa resolución una página de 48 mm da 384 px exactos, el ancho
+  nativo del cabezal.
+- El filtro recorta el blanco sobrante del final. Sin eso, cada etiqueta escupe la hoja completa
+  del PPD y se come el rollo.
 
-### How to use the script? 🎉️
+Si la cola queda en `processing` sin imprimir, mirar `/var/log/cups/error_log`; lo primero a
+probar es `sudo chmod 0700 /usr/lib/cups/backend/yhk` (lo pasa a correr como root).
 
-1. Scan the MAC address of your printer using Bluetoothctl
-2. Run scan on if printer found run pair xx:xx:xx:xx:xx:xx ADDR and trust xx:xx:xx:xx:xx:xx
-3. Exit bluetoothctl
-4. Run sdptool add --channel=N SP, where **"N"** is the channel, remember this as you will need this in the script. I have selected 2 in my case.
-5. Run sudo rfcomm bind **N** xx:xx:xx:xx:xx:xx, N  = channel = port
-6. Run cat-printer.py
-7. 
+## Obsedium OS
 
-### Notes: Usefull commands
-sdptool add --channel=2 SP
-sudo rfcomm connect /dev/rfcomm0 XX:XX:XX:XX:XX:XX 2
+El dashboard (`!Dashboard`) tiene un selector **A4 / Térmica** en la barra de selección de
+etiquetas: en térmica cambia `@page` a `48mm auto` y la grilla a una columna. Hay que elegirlo
+antes de imprimir, porque el CSS de `@page` se resuelve antes de que se abra el diálogo del
+navegador.

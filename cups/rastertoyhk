@@ -1,0 +1,145 @@
+#!/usr/bin/python3
+"""Filtro CUPS: PDF -> ESC/POS raster para la mini termica YHK-59A8.
+
+CUPS lo invoca con: jobid usuario titulo copias opciones [archivo]
+Si no hay archivo, el PDF llega por stdin. La salida cruda va a stdout,
+que el backend copia al socket bluetooth.
+
+La secuencia de bytes es la de cat-printer.py, que es lo unico que se
+comprobo que esta impresora entiende. No es ESC/POS generico:
+`1D 49 F0 19` es propio de este firmware, y la imagen va rotada 180.
+"""
+import os
+import subprocess
+import sys
+import tempfile
+
+from PIL import Image, ImageChops, ImageOps
+
+ANCHO = 384          # puntos del cabezal (48 mm a 203 dpi)
+DPI = 203
+BLOQUE_FILAS = 255   # ponytail: se probaron 500 filas de una; 255 por bloque
+                     # es el limite conservador de GS v 0. Si algun dia hay
+                     # que acelerar, subir esto y medir.
+
+
+def log(msg):
+    # CUPS recoge stderr en /var/log/cups/error_log
+    sys.stderr.write("ERROR: rastertoyhk: %s\n" % msg)
+    sys.stderr.flush()
+
+
+def recortar_blanco_final(im):
+    """Recorta el blanco sobrante de arriba y abajo, conservando el ancho.
+
+    Sin esto cada etiqueta escupe la hoja entera del PPD en blanco y se
+    come el rollo. El ancho no se toca para no descolocar el contenido.
+    """
+    gris = im.convert("L")
+    fondo = Image.new("L", gris.size, 255)
+    caja = ImageChops.difference(gris, fondo).getbbox()
+    if caja is None:
+        return None  # pagina vacia: no se imprime nada
+    arriba = max(0, caja[1] - 8)
+    abajo = min(im.height, caja[3] + 8)
+    return im.crop((0, arriba, im.width, abajo))
+
+
+def a_384(im):
+    """Deja la imagen en 384 px de ancho exactos."""
+    if im.width > ANCHO:
+        alto = max(1, int(im.height * (ANCHO / im.width)))
+        im = im.resize((ANCHO, alto))
+    if im.width < ANCHO:
+        fondo = Image.new("L", (ANCHO, im.height), 255)
+        fondo.paste(im.convert("L"), (0, 0))
+        im = fondo
+    return im
+
+
+def a_escpos(im):
+    """Convierte una pagina ya recortada en bloques GS v 0."""
+    im = a_384(im)
+    # Rareza real de esta unidad: sin rotar sale de cabeza (verificado en papel)
+    im = im.rotate(180)
+    # ESC/POS quiere 1 = punto negro; en PIL modo '1' el 1 es blanco
+    im = ImageOps.invert(im.convert("L")).convert("1")
+
+    datos = im.tobytes()
+    bytes_por_fila = ANCHO // 8
+    salida = bytearray()
+    for y0 in range(0, im.height, BLOQUE_FILAS):
+        filas = min(BLOQUE_FILAS, im.height - y0)
+        trozo = datos[y0 * bytes_por_fila:(y0 + filas) * bytes_por_fila]
+        salida += b"\x1d\x76\x30\x00"
+        salida += bytes((bytes_por_fila % 256, bytes_por_fila // 256))
+        salida += bytes((filas % 256, filas // 256))
+        salida += trozo
+    return bytes(salida)
+
+
+def paginas_del_pdf(ruta_pdf, tmp):
+    """Rasteriza el PDF a 203 dpi. A esa resolucion 48 mm dan 384 px justos."""
+    prefijo = os.path.join(tmp, "pag")
+    subprocess.run(
+        ["pdftoppm", "-r", str(DPI), "-gray", "-png", ruta_pdf, prefijo],
+        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+    )
+    return sorted(
+        os.path.join(tmp, f) for f in os.listdir(tmp)
+        if f.startswith("pag") and f.endswith(".png")
+    )
+
+
+def main():
+    copias = 1
+    if len(sys.argv) > 4:
+        try:
+            copias = max(1, int(sys.argv[4]))
+        except ValueError:
+            copias = 1
+
+    with tempfile.TemporaryDirectory() as tmp:
+        ruta_pdf = sys.argv[6] if len(sys.argv) > 6 and sys.argv[6] else None
+        if ruta_pdf is None:
+            ruta_pdf = os.path.join(tmp, "entrada.pdf")
+            with open(ruta_pdf, "wb") as f:
+                f.write(sys.stdin.buffer.read())
+
+        try:
+            pngs = paginas_del_pdf(ruta_pdf, tmp)
+        except subprocess.CalledProcessError as e:
+            log("pdftoppm fallo: %s" % e.stderr.decode("utf8", "replace").strip())
+            return 1
+        if not pngs:
+            log("el PDF no produjo ninguna pagina")
+            return 1
+
+        out = sys.stdout.buffer
+        out.write(b"\x1b\x40")          # init
+        out.write(b"\x1d\x49\xf0\x19")  # inicio de impresion (propio del firmware)
+
+        impresas = 0
+        for _ in range(copias):
+            for png in pngs:
+                with Image.open(png) as im:
+                    pagina = recortar_blanco_final(im)
+                    if pagina is None:
+                        continue
+                    out.write(a_escpos(pagina))
+                    out.write(b"\x0a\x0a\x0a")  # separacion entre etiquetas
+                    impresas += 1
+                    # Contabilidad de CUPS: sin esto el page_log dice
+                    # "total 0" y no se distingue de un trabajo que no imprimio
+                    sys.stderr.write("PAGE: %d 1\n" % impresas)
+                    sys.stderr.flush()
+
+        if impresas == 0:
+            log("todas las paginas venian en blanco")
+        out.write(b"\x0a\x0a\x0a\x0a")  # avance final para poder cortar
+        out.flush()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
