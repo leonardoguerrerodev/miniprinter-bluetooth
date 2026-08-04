@@ -1,2 +1,3 @@
 .venv/
 Captura de pantalla*.png
+__pycache__/

@@ -17,7 +17,11 @@ import tempfile
 from PIL import Image, ImageChops, ImageOps
 
 ANCHO = 384          # puntos del cabezal (48 mm a 203 dpi)
-DPI = 203
+ANCHO_ETIQUETA = 360 # 45 mm: el ancho pedido para la etiqueta, centrado en el
+                     # cabezal. Calibrar aca si se quiere mas o menos margen.
+MARGEN_V = 8         # ~1 mm de aire arriba y abajo del contenido
+DPI = 406            # 2x los 203 dpi del cabezal: sobra definicion para
+                     # recortar y reescalar sin que el texto quede blando
 BLOQUE_FILAS = 255   # ponytail: se probaron 500 filas de una; 255 por bloque
                      # es el limite conservador de GS v 0. Si algun dia hay
                      # que acelerar, subir esto y medir.
@@ -29,32 +33,37 @@ def log(msg):
     sys.stderr.flush()
 
 
-def recortar_blanco_final(im):
-    """Recorta el blanco sobrante de arriba y abajo, conservando el ancho.
+def recortar_blanco(im):
+    """Recorta todo el blanco que rodea al contenido, en ambos ejes.
 
-    Sin esto cada etiqueta escupe la hoja entera del PPD en blanco y se
-    come el rollo. El ancho no se toca para no descolocar el contenido.
+    Sin el recorte vertical cada etiqueta escupe la hoja entera del PPD en
+    blanco y se come el rollo. El horizontal es el que arregla el ancho:
+    los margenes laterales que manda el navegador no son fiables (ver
+    a_384), asi que se tiran y se reconstruyen.
     """
     gris = im.convert("L")
     fondo = Image.new("L", gris.size, 255)
     caja = ImageChops.difference(gris, fondo).getbbox()
     if caja is None:
         return None  # pagina vacia: no se imprime nada
-    arriba = max(0, caja[1] - 8)
-    abajo = min(im.height, caja[3] + 8)
-    return im.crop((0, arriba, im.width, abajo))
+    return im.crop(caja)
 
 
 def a_384(im):
-    """Deja la imagen en 384 px de ancho exactos."""
-    if im.width > ANCHO:
-        alto = max(1, int(im.height * (ANCHO / im.width)))
-        im = im.resize((ANCHO, alto))
-    if im.width < ANCHO:
-        fondo = Image.new("L", (ANCHO, im.height), 255)
-        fondo.paste(im.convert("L"), (0, 0))
-        im = fondo
-    return im
+    """Escala la etiqueta a 45 mm y la centra en los 48 mm del cabezal.
+
+    El ancho que manda el navegador no sirve como referencia: con una
+    impresora seleccionada Chrome no adopta el @page size, elige el papel
+    del PPD y escala el contenido por su cuenta (medido: un marco de 45 mm
+    salio a 30 mm, pegado a la izquierda y con 14 mm muertos a la derecha).
+    Fijar el ancho aca hace que el resultado en papel no dependa de lo que
+    decida el dialogo de impresion.
+    """
+    alto = max(1, round(im.height * (ANCHO_ETIQUETA / im.width)))
+    im = im.convert("L").resize((ANCHO_ETIQUETA, alto), Image.LANCZOS)
+    hoja = Image.new("L", (ANCHO, alto + 2 * MARGEN_V), 255)
+    hoja.paste(im, ((ANCHO - ANCHO_ETIQUETA) // 2, MARGEN_V))
+    return hoja
 
 
 def a_escpos(im):
@@ -85,7 +94,7 @@ def a_escpos(im):
 
 
 def paginas_del_pdf(ruta_pdf, tmp):
-    """Rasteriza el PDF a 203 dpi. A esa resolucion 48 mm dan 384 px justos."""
+    """Rasteriza el PDF con definicion de sobra; a_384 fija el ancho final."""
     prefijo = os.path.join(tmp, "pag")
     subprocess.run(
         ["pdftoppm", "-r", str(DPI), "-gray", "-png", ruta_pdf, prefijo],
@@ -129,7 +138,7 @@ def main():
         for _ in range(copias):
             for png in pngs:
                 with Image.open(png) as im:
-                    pagina = recortar_blanco_final(im)
+                    pagina = recortar_blanco(im)
                     if pagina is None:
                         continue
                     out.write(a_escpos(pagina))
