@@ -142,7 +142,12 @@ def main():
 
         if impresas == 0:
             log("todas las paginas venian en blanco")
-        out.write(b"\x0a\x0a\x0a\x0a")  # avance final para poder cortar
+        # ponytail: 2 LF en vez de 4. Con el espaciado default de ESC/POS
+        # (1/6", ~4.23mm por LF) esto recorta ~8.5mm de sobrante al final.
+        # Es una estimacion del espaciado default del firmware, no medida
+        # directa en mm; si sigue sobrando o corta antes de tiempo, calibrar
+        # aca sumando o restando LFs.
+        out.write(b"\x0a\x0a")  # avance final para poder cortar
         out.flush()
     return 0
 
