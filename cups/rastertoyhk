@@ -17,8 +17,9 @@ import tempfile
 from PIL import Image, ImageChops, ImageOps
 
 ANCHO = 384          # puntos del cabezal (48 mm a 203 dpi)
-ANCHO_ETIQUETA = 360 # 45 mm: el ancho pedido para la etiqueta, centrado en el
-                     # cabezal. Calibrar aca si se quiere mas o menos margen.
+ANCHO_ETIQUETA = 380 # 47.5 mm de los 48 del cabezal: se usa casi todo el ancho
+                     # y quedan 2 px por lado para que el borde punteado no se
+                     # coma el limite del cabezal. Calibrar aca el margen.
 MARGEN_V = 8         # ~1 mm de aire arriba y abajo del contenido
 DPI = 406            # 2x los 203 dpi del cabezal: sobra definicion para
                      # recortar y reescalar sin que el texto quede blando

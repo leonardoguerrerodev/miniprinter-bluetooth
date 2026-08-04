@@ -37,4 +37,5 @@ for ancho_pag, x0, ancho_caja in [(768, 50, 480), (768, 0, 720), (768, 200, 320)
 
 assert f.recortar_blanco(Image.new("L", (768, 400), 255)) is None  # hoja vacia
 
-print("OK: 45 mm centrados en los 48 mm del cabezal, venga como venga la hoja")
+print("OK: %d px (%.1f mm) centrados en el cabezal, venga como venga la hoja"
+      % (f.ANCHO_ETIQUETA, f.ANCHO_ETIQUETA / 203 * 25.4))
