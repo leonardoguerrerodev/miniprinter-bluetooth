@@ -22,7 +22,13 @@
     <style:default-style style:family="paragraph">
       <style:text-properties style:font-name="Liberation Mono" fo:font-size="9pt"/>
     </style:default-style>
-    <style:style style:name="Standard" style:family="paragraph">
+    <!-- El estilo de parrafo apunta al estilo de pagina "MiniThermal", que es
+         el nombre que se ve en Formato > Estilo de pagina y en el panel F11.
+         (El desplegable "Formato" de ese dialogo dira "Usuario": la lista de
+         papeles con nombre esta compilada dentro de LibreOffice y no se puede
+         extender.) -->
+    <style:style style:name="Standard" style:family="paragraph"
+                 style:master-page-name="MiniThermal">
       <style:text-properties style:font-name="Liberation Mono" fo:font-size="9pt"/>
     </style:style>
   </office:styles>
@@ -38,7 +44,7 @@
     </style:page-layout>
   </office:automatic-styles>
   <office:master-styles>
-    <style:master-page style:name="Standard" style:page-layout-name="pm-termica"/>
+    <style:master-page style:name="MiniThermal" style:page-layout-name="pm-termica"/>
   </office:master-styles>
   <office:body>
     <office:text>

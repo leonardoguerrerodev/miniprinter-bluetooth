@@ -41,7 +41,7 @@ Después aparece en el diálogo de impresión de Chrome y de cualquier app.
 |---|---|
 | `cups/yhk` | Backend CUPS: abre el socket RFCOMM y copia el trabajo |
 | `cups/rastertoyhk` | Filtro CUPS: PDF → ESC/POS (rasteriza con `pdftoppm` a 203 dpi) |
-| `cups/obsedium-yhk.ppd` | Rollo de 48 mm, 203 dpi, monocromo |
+| `cups/obsedium-yhk.ppd` | Rollos de 48 mm y hoja `MiniThermal` de 56 mm, 203 dpi, monocromo |
 | `cups/obsedium-termica.fodt` | Plantilla de Writer: hoja de 56 mm, área útil de 48 mm |
 | `cups/test_rastertoyhk.py` | Check del filtro: la etiqueta sale siempre al mismo ancho |
 | `cups/instalar.sh` | Copia todo a su lugar y crea la cola `Obsedium_Termica` |
@@ -49,12 +49,21 @@ Después aparece en el diálogo de impresión de Chrome y de cualquier app.
 ### Escribir etiquetas en LibreOffice Writer
 
 El instalador deja la plantilla en `~/.config/libreoffice/4/user/template/`; se abre desde
-**Archivo → Nuevo → Plantillas** (`Ctrl+Shift+N`). El rollo mide 56 mm pero el cabezal solo
-marca 48, así que la hoja se declara de 56 mm con 4 mm de margen a cada lado: lo que se
-escriba dentro de esos 48 mm es exactamente lo que se imprime.
+**Archivo → Nuevo → Plantillas** (`Ctrl+Shift+N`). Trae un estilo de página llamado
+**`MiniThermal`**, visible en **Formato → Estilo de página** y en el panel de estilos (`F11`).
+
+El rollo mide 56 mm pero el cabezal solo marca 48, así que la hoja se declara de 56 mm con
+4 mm de margen a cada lado: lo que se escriba dentro de esos 48 mm es exactamente lo que se
+imprime, y el filtro descarta los 4 mm de cada borde.
 
 Para cambiar el tamaño de hoja de un documento cualquiera: **Formato → Estilo de página… →
 pestaña Página**, ahí están el desplegable *Formato*, *Anchura*/*Altura* y los márgenes.
+
+> El desplegable *Formato* de ese diálogo **siempre dirá "Usuario"** para esta hoja. La lista
+> de papeles con nombre (A4, Carta, Oficio…) está compilada dentro de `libvcllo.so`; no hay
+> archivo de configuración que la extienda, así que no se le puede agregar un `MiniThermal`.
+> El nombre sí existe como **estilo de página** y como **papel de la impresora** (el PPD, que
+> aparece en el diálogo de impresión de Chrome y de LibreOffice).
 
 Detalles que cuestan de descubrir:
 
@@ -67,6 +76,12 @@ Detalles que cuestan de descubrir:
   nativo del cabezal.
 - El filtro recorta el blanco sobrante del final. Sin eso, cada etiqueta escupe la hoja completa
   del PPD y se come el rollo.
+- El filtro **conserva la escala física** (1 mm de papel = 8 px de cabezal) y centra la hoja en
+  los 384 px. Así una hoja de 48 mm entra 1:1 y una de 56 mm pierde los 4 mm por lado que el
+  cabezal no alcanza. Hubo una versión que reescalaba la mancha de tinta a un ancho fijo, para
+  compensar que Chrome encogía las etiquetas; eso se arregló en su origen (era
+  `visibility:hidden`, que no saca del layout) y la receta se revirtió, porque con documentos
+  de otras apps agrandaba cualquier texto corto hasta los 48 mm.
 
 Si la cola queda en `processing` sin imprimir, mirar `/var/log/cups/error_log`; lo primero a
 probar es `sudo chmod 0700 /usr/lib/cups/backend/yhk` (lo pasa a correr como root).

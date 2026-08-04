@@ -37,6 +37,7 @@
 *PageSize Rollo48x100/48 x 100 mm (etiqueta): "<</PageSize[136 283]/ImagingBBox null>>setpagedevice"
 *PageSize Rollo48x150/48 x 150 mm (etiqueta larga): "<</PageSize[136 425]/ImagingBBox null>>setpagedevice"
 *PageSize Rollo48x297/48 x 297 mm (tira larga): "<</PageSize[136 842]/ImagingBBox null>>setpagedevice"
+*PageSize MiniThermal/MiniThermal 56 x 100 mm: "<</PageSize[159 283]/ImagingBBox null>>setpagedevice"
 *CloseUI: *PageSize
 
 *OpenUI *PageRegion/Area de pagina: PickOne
@@ -45,6 +46,7 @@
 *PageRegion Rollo48x100/48 x 100 mm (etiqueta): "<</PageSize[136 283]/ImagingBBox null>>setpagedevice"
 *PageRegion Rollo48x150/48 x 150 mm (etiqueta larga): "<</PageSize[136 425]/ImagingBBox null>>setpagedevice"
 *PageRegion Rollo48x297/48 x 297 mm (tira larga): "<</PageSize[136 842]/ImagingBBox null>>setpagedevice"
+*PageRegion MiniThermal/MiniThermal 56 x 100 mm: "<</PageSize[159 283]/ImagingBBox null>>setpagedevice"
 *CloseUI: *PageRegion
 
 *% Sin margenes: el cabezal cubre los 48 mm completos y el filtro recorta el
@@ -53,19 +55,21 @@
 *ImageableArea Rollo48x100/48 x 100 mm (etiqueta): "0 0 136 283"
 *ImageableArea Rollo48x150/48 x 150 mm (etiqueta larga): "0 0 136 425"
 *ImageableArea Rollo48x297/48 x 297 mm (tira larga): "0 0 136 842"
+*ImageableArea MiniThermal/MiniThermal 56 x 100 mm: "11 0 147 283"
 
 *DefaultPaperDimension: Rollo48x100
 *PaperDimension Rollo48x100/48 x 100 mm (etiqueta): "136 283"
 *PaperDimension Rollo48x150/48 x 150 mm (etiqueta larga): "136 425"
 *PaperDimension Rollo48x297/48 x 297 mm (tira larga): "136 842"
+*PaperDimension MiniThermal/MiniThermal 56 x 100 mm: "159 283"
 
 *% Rollo continuo: se permite cualquier alto para que Chrome pueda pedir
 *% `@page { size: 48mm auto }` sin que CUPS lo rechace.
 *HWMargins: 0 0 0 0
-*MaxMediaWidth: "136"
+*MaxMediaWidth: "159"
 *MaxMediaHeight: "3276"
 *CustomPageSize True: "pop pop pop <</PageSize[5 -2 roll]/ImagingBBox null>>setpagedevice"
-*ParamCustomPageSize Width: 1 points 72 136
+*ParamCustomPageSize Width: 1 points 72 159
 *ParamCustomPageSize Height: 2 points 72 3276
 *ParamCustomPageSize WidthOffset: 3 points 0 0
 *ParamCustomPageSize HeightOffset: 4 points 0 0

@@ -17,9 +17,6 @@ import tempfile
 from PIL import Image, ImageChops, ImageOps
 
 ANCHO = 384          # puntos del cabezal (48 mm a 203 dpi)
-ANCHO_ETIQUETA = 380 # 47.5 mm de los 48 del cabezal: se usa casi todo el ancho
-                     # y quedan 2 px por lado para que el borde punteado no se
-                     # coma el limite del cabezal. Calibrar aca el margen.
 MARGEN_V = 8         # ~1 mm de aire arriba y abajo del contenido
 DPI = 406            # 2x los 203 dpi del cabezal: sobra definicion para
                      # recortar y reescalar sin que el texto quede blando
@@ -35,35 +32,41 @@ def log(msg):
 
 
 def recortar_blanco(im):
-    """Recorta todo el blanco que rodea al contenido, en ambos ejes.
+    """Recorta el blanco sobrante de arriba y abajo, conservando el ancho.
 
-    Sin el recorte vertical cada etiqueta escupe la hoja entera del PPD en
-    blanco y se come el rollo. El horizontal es el que arregla el ancho:
-    los margenes laterales que manda el navegador no son fiables (ver
-    a_384), asi que se tiran y se reconstruyen.
+    Sin esto cada etiqueta escupe la hoja entera del PPD en blanco y se come
+    el rollo. A lo ancho no se toca: donde cae el contenido dentro de la hoja
+    es informacion real (los margenes del PPD), y a_384 la necesita.
     """
     gris = im.convert("L")
     fondo = Image.new("L", gris.size, 255)
     caja = ImageChops.difference(gris, fondo).getbbox()
     if caja is None:
         return None  # pagina vacia: no se imprime nada
-    return im.crop(caja)
+    return im.crop((0, caja[1], im.width, caja[3]))
 
 
 def a_384(im):
-    """Escala la etiqueta a 45 mm y la centra en los 48 mm del cabezal.
+    """Lleva la hoja al cabezal conservando la escala fisica.
 
-    El ancho que manda el navegador no sirve como referencia: con una
-    impresora seleccionada Chrome no adopta el @page size, elige el papel
-    del PPD y escala el contenido por su cuenta (medido: un marco de 45 mm
-    salio a 30 mm, pegado a la izquierda y con 14 mm muertos a la derecha).
-    Fijar el ancho aca hace que el resultado en papel no dependa de lo que
-    decida el dialogo de impresion.
+    1 mm de papel = 8 px de cabezal (203 dpi). Se rasteriza al doble y se
+    reduce aca, y despues se centra en los 384 px: una hoja de 48 mm entra
+    1:1, y una de 56 mm (MiniThermal) pierde los 4 mm por lado que el cabezal
+    no alcanza. Nada se deforma.
+
+    Antes esto reescalaba la mancha de tinta a un ancho fijo, que enderezaba
+    las etiquetas del dashboard cuando Chrome las encogia — pero ese bug se
+    arreglo en su origen (era `visibility:hidden`, que no saca del layout), y
+    con hojas de otras apps la receta agrandaba cualquier texto corto hasta
+    ocupar los 48 mm.
     """
-    alto = max(1, round(im.height * (ANCHO_ETIQUETA / im.width)))
-    im = im.convert("L").resize((ANCHO_ETIQUETA, alto), Image.LANCZOS)
+    escala = 203.0 / DPI
+    ancho = max(1, round(im.width * escala))
+    alto = max(1, round(im.height * escala))
+    im = im.convert("L").resize((ancho, alto), Image.LANCZOS)
     hoja = Image.new("L", (ANCHO, alto + 2 * MARGEN_V), 255)
-    hoja.paste(im, ((ANCHO - ANCHO_ETIQUETA) // 2, MARGEN_V))
+    # Un offset negativo recorta: PIL clipea el pegado contra el lienzo.
+    hoja.paste(im, ((ANCHO - ancho) // 2, MARGEN_V))
     return hoja
 
 
